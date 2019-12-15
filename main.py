@@ -1,5 +1,5 @@
 from vk_api.bot_longpoll import  VkBotLongPoll, VkBotEventType
-from functions import  writeOrUpdateFile, readFromFile, getMemberFromFile
+from functions import updateCurrentMember
 from vkRequests import  get_members_that_liked_post
 from prettytable import PrettyTable
 import json
@@ -10,7 +10,7 @@ vk = vk_api.VkApi(token="b46013bc0945e81e73c84c6cceb1896dfb39dc53b2ad280ce7be624
 vk._auth_token()
 vk.get_api()
 
-longpoll = VkBotLongPoll(vk, 189740662)
+longpoll = VkBotLongPoll(vk, 189740662, wait=25)
 
 keyboard = {
     "one_time": False,
@@ -53,56 +53,37 @@ keyboard = {
 keyboard = json.dumps(keyboard, ensure_ascii=False).encode('utf-8')
 keyboard = str(keyboard.decode('utf-8'))
 
-members = []
+updateCurrentMember(1, {'key': 'adminDecision', 'value': 10}, 1)
+updateCurrentMember(2, {'key': 'adminDecision', 'value': 10}, 1)
+updateCurrentMember(3, {'key': 'adminDecision', 'value': 10}, 1)
 
-members.append({
-    'id': 170877706,
-    'score': 42,
-    'likes': [25, 12],
-    'comments': {'25': 5, '12': 2},        # в 25 посту 5 комментариев
-    'reposts': [25, 12],
-    'adminDecision': 10,
-})
-members.append({
-    'id': 270877234,
-    'score': 42,
-    'likes': [25, 12],
-    'comments': {'25': 5, '12': 2},        # в 25 посту 5 комментариев
-    'reposts': [25, 12],
-    'adminDecision': 10,
-})
-
-writeOrUpdateFile(members)
-
-# data = readFromFile()
-
-# testMember = getMemberFromFile(170877706)
-# if testMember:
-#     print(testMember)
-# else:
-#     print("no member found")
+for i in range(100):
+    updateCurrentMember(i, {'key': 'adminDecision', 'value': 10}, 1)
 
 while True:
     try:
         for event in longpoll.listen():
-            if event.type == VkBotEventType.WALL_REPLY_NEW:
-                print("Got new comment under post..")
-                print(f'User: {event.object.from_id}')
+
+            if event.type == VkBotEventType.WALL_REPLY_NEW or event.type == VkBotEventType.WALL_REPLY_RESTORE:
                 print(f'Body: {event.object}')
+                updateCurrentMember(event.object.from_id, {'key': 'comments', 'value': event.object.post_id}, 1)
+
+            if event.type == VkBotEventType.WALL_REPLY_DELETE:
+                print(f'Body: {event.object}')
+                updateCurrentMember(event.object.deleter_id, {'key': 'comments', 'value': event.object.post_id}, -1)
 
             if event.type == VkBotEventType.WALL_REPOST:
-                print("Someone reposted our post!!!!")
-                print(f'User: {event.object.from_id}')
                 print(f'Body: {event.object}')
+                updateCurrentMember(event.object.from_id, {'key': 'reposts', 'value': event.object.post_id}, 1)
 
             if event.type == VkBotEventType.POLL_VOTE_NEW:
-                print("Someone vote...")
-                print(f'User: {event.object.from_id}')
                 print(f'Body: {event.object}')
+                updateCurrentMember(event.object.user_id, {'key': 'votes', 'value': event.object.poll_id}, 1)
 
             if event.type == VkBotEventType.GROUP_JOIN:
                 print("we got new membership!")
                 print(event.object.user_id)
+                updateCurrentMember(event.object.user_id, {'key': 'adminDecision', 'value': 10}, 1)
 
             if event.type == VkBotEventType.MESSAGE_NEW:
                 print("Got new message from subscriber")

@@ -53,27 +53,25 @@ def calculateScore(data):
     commentsScore = 0
     likesScore    = len(data['likes'])
     repostsScore  = len(data['reposts']) * 2
+    votes         = len(data['votes'])
 
     for key in data['comments']:
         for i in range(data['comments'][key]):
             commentsScore += pow(0.5, i+1)
 
-    total = likesScore + repostsScore + commentsScore + data['adminDecision']
+    total = likesScore + repostsScore + commentsScore + votes + data['adminDecision']
 
     return total
 
 
-def updateCurrentMember(id, data):
+def updateCurrentMember(id, data, sign = 1):
     fileData = []
 
     if checkEmptyFile():
         fileData = readFromFile()
 
-    flag = False
-    for oldItem in fileData:
-        if id == oldItem['id']:
-            flag = True
-            break
+    # checking if file contains object, that's id == id
+    flag = True if len([el for el in fileData if el['id'] == id]) > 0 else False
 
     if not flag:
         fileData.append({
@@ -82,18 +80,32 @@ def updateCurrentMember(id, data):
             'likes': [],
             'comments': [],
             'reposts': [],
-            'adminDecision': 10,
+            'votes': [],
+            'adminDecision': 0,
         })
 
     for oldItem in fileData:
         if id == oldItem['id']:
-            if data['key'] == 'likes' or data['key'] == 'reposts':
+            if (data['key'] == 'likes') or (data['key'] == 'reposts') or (data['key'] == 'votes'):
+
                 if not data['value'] in oldItem[data['key']]:
-                    oldItem[data['key']].append(data['value'])
+                    if sign == 1:
+                        oldItem[data['key']].append(data['value'])
+                    else:
+                        print("trying to delete unexisting value")
+                else:
+                    if not sign == 1:
+                        oldItem[data['key']].remove(data['value'])
 
             if data['key'] == 'comments':
                 if str(data['value']) in oldItem[data['key']]:
-                    oldItem[data['key']][str(data['value'])] += 1
+                    if oldItem[data['key']][str(data['value'])] > 0:
+                        oldItem[data['key']][str(data['value'])] += 1 * sign
+                    elif sign == 1 and oldItem[data['key']][str(data['value'])] == 0:
+                        oldItem[data['key']][str(data['value'])] += 1
+                    else:
+                        print("trying to delete unexisting value")
+
                 else:
                     if len(oldItem[data['key']]) == 0:
                         oldItem[data['key']] = {str(data['value']): 1}
@@ -101,16 +113,16 @@ def updateCurrentMember(id, data):
                         oldItem[data['key']][str(data['value'])] = 1
 
             if data['key'] == 'adminDecision':
-                oldItem[data['key']] += data['value']
+                print(oldItem[data['key']])
+                oldItem[data['key']] += data['value'] * sign
+                print(oldItem[data['key']])
 
             oldItem['score'] = calculateScore(oldItem)
             break
 
-    print(fileData)
     with open('data.json', 'w') as outfile:
         json.dump(fileData, outfile)
 
 
 
-updateCurrentMember(170877706, {'key': 'likes', 'value': 122})
-
+# updateCurrentMember(170877706, {'key': 'comments', 'value': 25}, 1) #id, key of action, value to setup, sign(optional) to decrease value
